@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protótipo - App de Endometriose</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .view-container {
+            transition: all 0.3s ease-in-out;
+        }
+        .desktop-view {
+            max-width: 1280px;
+            margin: 1rem auto;
+        }
+        .mobile-view {
+            max-width: 420px;
+            margin: 1rem auto;
+            height: 800px;
+            border: 8px solid #1f2937;
+            border-radius: 40px;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+            overflow-y: auto;
+            scrollbar-width: none; /* Firefox */
+        }
+        .mobile-view::-webkit-scrollbar {
+            display: none; /* Safari and Chrome */
+        }
+        .screen {
+            display: none;
+        }
+        .screen.active {
+            display: block;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f1f1f1;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+        }
+        .dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+        .dropdown-content a:hover {background-color: #ddd;}
+        .dropdown:hover .dropdown-content {display: block;}
+        .text-balance { text-wrap: balance; }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="text-gray-800 p-4">
+
+    <!-- Developer Controls -->
+    <div class="max-w-md mx-auto mb-4 p-2 bg-gray-200 rounded-lg flex items-center justify-center space-x-4">
+        <span class="text-sm font-semibold text-gray-700">Controles do Desenvolvedor:</span>
+        <div class="flex items-center space-x-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+            <label for="view-toggle" class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="view-toggle" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-focus:ring-4 peer-focus:ring-pink-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
+            </label>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+        </div>
+    </div>
+
+    <div id="app-container" class="view-container desktop-view">
+        <header class="bg-white shadow-md rounded-t-3xl (mobile-view:rounded-t-3xl)">
+            <div class="mx-auto px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <!-- Dropdown Menu -->
+                    <div class="dropdown relative inline-block">
+                        <button class="p-2 rounded-md hover:bg-gray-100 focus:outline-none">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                        </button>
+                        <div id="nav-dropdown" class="dropdown-content rounded-md">
+                            <a href="#" class="nav-link" data-screen="dashboard">Painel Principal</a>
+                            <a href="#" class="nav-link" data-screen="new-log">Novo Log Diário</a>
+                            <a href="#" class="nav-link" data-screen="reports">Relatórios</a>
+                            <a href="#" class="nav-link" data-screen="education">Aprender</a>
+                            <a href="#" class="nav-link" data-screen="settings">Configurações e Suporte</a>
+                            <a href="#" class="nav-link" data-screen="login">Sair (Tela de Login)</a>
+                        </div>
+                    </div>
+                    <h1 class="text-xl font-bold text-pink-600">EndoCare</h1>
+                </div>
+                <div id="user-info-header" class="flex items-center space-x-2">
+                    <span class="text-sm font-medium">Olá, Ana!</span>
+                    <img class="h-8 w-8 rounded-full" src="https://placehold.co/40x40/E9D5FF/4C1D95?text=A" alt="Avatar do utilizador">
+                </div>
+            </div>
+        </header>
+
+        <main class="bg-white p-4 sm:p-6 h-full rounded-b-3xl (mobile-view:rounded-b-3xl)">
+            <!-- Tela de Login -->
+            <div id="login" class="screen">
+                <div class="flex flex-col items-center justify-center h-full p-4">
+                    <h2 class="text-3xl font-bold mb-8 text-gray-700">Bem-vinda de volta!</h2>
+                    <form class="w-full max-w-sm">
+                        <div class="mb-4">
+                            <label for="email" class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                            <input type="email" id="email" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="seu.email@exemplo.com">
+                        </div>
+                        <div class="mb-6">
+                            <label for="password" class="block text-gray-700 text-sm font-bold mb-2">Senha</label>
+                            <input type="password" id="password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" placeholder="******************">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <button class="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="button" onclick="showScreen('dashboard')">
+                                Entrar
+                            </button>
+                            <a class="inline-block align-baseline font-bold text-sm text-pink-600 hover:text-pink-800" href="#">
+                                Esqueceu a senha?
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tela Principal (Dashboard) -->
+            <div id="dashboard" class="screen active">
+                <h2 class="text-2xl font-bold mb-4">Painel Principal</h2>
+                <p class="text-gray-600 mb-6">Olá! Aqui está um resumo da sua saúde nos últimos dias.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-pink-100 p-4 rounded-lg text-center">
+                        <p class="text-sm text-pink-800 text-balance">Nível Médio de Dor (7 dias)</p>
+                        <p class="text-2xl md:text-3xl font-bold text-pink-700">6/10</p>
+                    </div>
+                    <div class="bg-indigo-100 p-4 rounded-lg text-center">
+                        <p class="text-sm text-indigo-800 text-balance">Sintoma Mais Frequente</p>
+                        <p class="text-2xl md:text-3xl font-bold text-indigo-700">Inchaço</p>
+                    </div>
+                    <div class="bg-teal-100 p-4 rounded-lg text-center">
+                        <p class="text-sm text-teal-800 text-balance">Logs Registados</p>
+                        <p class="text-2xl md:text-3xl font-bold text-teal-700">25/30 dias</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-700 mb-2">Resumo do Ciclo</h3>
+                        <div class="flex items-center justify-around text-center">
+                            <div>
+                                <p class="text-xl md:text-2xl font-bold text-pink-600">14</p>
+                                <p class="text-xs text-gray-500">Dia do Ciclo</p>
+                            </div>
+                            <div>
+                                <p class="text-base md:text-lg font-semibold text-indigo-600">Fase Lútea</p>
+                                <p class="text-xs text-gray-500">Fase Atual</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-yellow-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-yellow-800 mb-2">Sugestão do Dia</h3>
+                        <p class="text-sm text-yellow-700 text-balance">Notámos que o seu nível de stress tem estado um pouco alto. Que tal experimentar 5 minutos de respiração guiada na secção 'Aprender'?</p>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xl font-semibold mb-2">Evolução da Dor (Últimos 30 dias)</h3>
+                    <div class="h-64"><canvas id="painChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Tela de Novo Log Diário -->
+            <div id="new-log" class="screen">
+                <h2 class="text-2xl font-bold mb-4">Novo Log Diário - 08 de Julho de 2025</h2>
+                <form class="space-y-2">
+                    <!-- Accordion: Dor e Sintomas -->
+                    <div class="border rounded-md">
+                        <button type="button" class="accordion-toggle w-full p-4 text-left font-semibold flex justify-between items-center hover:bg-gray-50">
+                            <span>Dor e Sintomas</span>
+                            <svg class="w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="accordion-content p-4 pt-0 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Intensidade da Dor (0-10)</label>
+                                <input type="range" min="0" max="10" value="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Qualidade da Dor</label>
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                                    <button type="button" class="p-2 border rounded-md text-sm hover:bg-pink-100">Latejante</button>
+                                    <button type="button" class="p-2 border rounded-md text-sm hover:bg-pink-100">Pontada</button>
+                                    <button type="button" class="p-2 border rounded-md text-sm hover:bg-pink-100">Queimação</button>
+                                    <button type="button" class="p-2 border rounded-md text-sm hover:bg-pink-100">Cólica</button>
+                                </div>
+                            </div>
+                             <div>
+                                <label class="block text-sm font-medium text-gray-700">Localização da Dor</label>
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                                    <button type="button" class="p-2 border rounded-md text-sm hover:bg-indigo-100">Pelve</button>
+                                    <button type="button" class="p-2 border rounded-md text-sm hover:bg-indigo-100">Lombar</button>
+                                    <button type="button" class="p-2 border rounded-md text-sm hover:bg-indigo-100">Abdómen</button>
+                                    <button type="button" class="p-2 border rounded-md text-sm hover:bg-indigo-100">Pernas</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Accordion: Ciclo Menstrual -->
+                    <div class="border rounded-md">
+                        <button type="button" class="accordion-toggle w-full p-4 text-left font-semibold flex justify-between items-center hover:bg-gray-50">
+                            <span>Ciclo Menstrual</span>
+                            <svg class="w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="accordion-content p-4 pt-0 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Fluxo Menstrual</label>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+                                    <button type="button" class="p-2 border rounded-md text-sm hover:bg-pink-100">Nenhum</button>
+                                    <button type="button" class="p-2 border rounded-md text-sm hover:bg-pink-100">Leve</button>
+                                    <button type="button" class="p-2 border rounded-md text-sm hover:bg-pink-100">Moderado</button>
+                                    <button type="button" class="p-2 border rounded-md text-sm hover:bg-pink-100">Intenso</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="spotting" type="checkbox" class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500">
+                                <label for="spotting" class="ml-2 block text-sm text-gray-900">Ocorreu sangramento de escape (spotting)?</label>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Accordion: Estilo de Vida e Gatilhos -->
+                    <div class="border rounded-md">
+                        <button type="button" class="accordion-toggle w-full p-4 text-left font-semibold flex justify-between items-center hover:bg-gray-50">
+                            <span>Estilo de Vida e Gatilhos</span>
+                            <svg class="w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="accordion-content p-4 pt-0 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Qualidade do Sono (1-5)</label>
+                                <input type="range" min="1" max="5" value="3" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                             <div>
+                                <label class="block text-sm font-medium text-gray-700">Nível de Stress (1-5)</label>
+                                <input type="range" min="1" max="5" value="3" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                             <div>
+                                <label class="block text-sm font-medium text-gray-700">Atividade Sexual Hoje?</label>
+                                <div class="flex items-center space-x-4 mt-1">
+                                    <button type="button" class="p-2 border rounded-md text-sm hover:bg-gray-100">Sim</button>
+                                    <button type="button" class="p-2 border rounded-md text-sm hover:bg-gray-100">Não</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Accordion: Tratamentos e Notas -->
+                    <div class="border rounded-md">
+                        <button type="button" class="accordion-toggle w-full p-4 text-left font-semibold flex justify-between items-center hover:bg-gray-50">
+                            <span>Tratamentos e Notas</span>
+                            <svg class="w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="accordion-content p-4 pt-0 space-y-4">
+                            <div>
+                                <label for="meds" class="block text-sm font-medium text-gray-700">Medicamentos que tomou hoje</label>
+                                <input type="text" id="meds" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500" placeholder="Ex: Ibuprofeno 400mg, Pílula...">
+                            </div>
+                            <div>
+                                <label for="notes" class="block text-sm font-medium text-gray-700">Notas Adicionais</label>
+                                <textarea id="notes" rows="4" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500" placeholder="Algum gatilho? Algo que ajudou?"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-end pt-4">
+                        <button type="submit" class="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Salvar Log</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tela de Relatórios -->
+            <div id="reports" class="screen">
+                <h2 class="text-2xl font-bold mb-4">Gerar Relatório</h2>
+                <p class="text-gray-600 mb-6">Exporte um resumo dos seus dados para partilhar com o seu profissional de saúde.</p>
+                <div class="bg-gray-100 p-4 rounded-lg flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                    <div class="flex-grow">
+                        <label for="period" class="block text-sm font-medium text-gray-700">Selecione o Período</label>
+                        <select id="period" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm rounded-md">
+                            <option>Últimos 30 dias</option>
+                            <option>Últimos 60 dias</option>
+                            <option>Últimos 90 dias</option>
+                        </select>
+                    </div>
+                    <button class="w-full sm:w-auto bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="generatePDF()">Gerar PDF</button>
+                </div>
+
+                <div class="mt-8 border rounded-lg p-6">
+                    <h3 class="text-lg font-semibold text-center">Pré-visualização do Relatório</h3>
+                    <div class="text-center my-4">
+                        <h4 class="font-bold text-xl">Relatório de Saúde - EndoCare</h4>
+                        <p class="text-sm text-gray-500">Período: 09 de Junho de 2025 - 08 de Julho de 2025</p>
+                    </div>
+                    <div class="h-64 mb-4"><canvas id="reportChart"></canvas></div>
+                    <h4 class="font-semibold mt-6 mb-2">Resumo dos Logs Diários</h4>
+                    <div class="text-sm space-y-2">
+                        <p><strong>07/07/2025:</strong> Dor 7/10. Sintomas: Cólica, Fadiga. Meds: Buscopan.</p>
+                        <p><strong>06/07/2025:</strong> Dor 8/10. Sintomas: Cólica, Inchaço, Dor Lombar. Notas: Dia muito difícil.</p>
+                        <p><strong>05/07/2025:</strong> Dor 5/10. Sintomas: Inchaço. Meds: Pílula.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tela de Conteúdo Educativo -->
+            <div id="education" class="screen">
+                <h2 class="text-2xl font-bold mb-4">Aprender sobre Endometriose</h2>
+                <div class="space-y-4">
+                    <div class="bg-white p-4 rounded-lg shadow cursor-pointer hover:shadow-lg transition-shadow">
+                        <h3 class="font-semibold text-lg text-pink-700">O que é Endometriose?</h3>
+                        <p class="text-gray-600 text-sm mt-1">Entenda as causas, os tipos e como a doença se manifesta no corpo.</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow cursor-pointer hover:shadow-lg transition-shadow">
+                        <h3 class="font-semibold text-lg text-pink-700">Opções de Tratamento</h3>
+                        <p class="text-gray-600 text-sm mt-1">Conheça as abordagens clínicas, cirúrgicas e as terapias complementares.</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow cursor-pointer hover:shadow-lg transition-shadow">
+                        <h3 class="font-semibold text-lg text-pink-700">Dieta Anti-inflamatória e Endometriose</h3>
+                        <p class="text-gray-600 text-sm mt-1">Descubra como a alimentação pode ser uma aliada no controlo dos sintomas.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tela de Configurações e Suporte -->
+            <div id="settings" class="screen">
+                <h2 class="text-2xl font-bold mb-6">Configurações e Suporte</h2>
+                <div class="space-y-8">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">Modo Cuidador</h3>
+                        <p class="text-sm text-gray-600 mb-4">Partilhe os seus dados com um responsável ou profissional de saúde.</p>
+                        <div class="bg-gray-100 p-4 rounded-lg">
+                            <p class="font-medium">Responsável Convidado: Carlos Silva (parceiro)</p>
+                            <p class="text-xs text-gray-500">Acesso a: Calendário, Lembretes de Medicação.</p>
+                            <div class="mt-2 space-x-2">
+                                <button class="text-sm text-blue-600 hover:underline">Gerir Permissões</button>
+                                <button class="text-sm text-red-600 hover:underline">Remover</button>
+                            </div>
+                        </div>
+                        <button class="mt-4 w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Convidar Novo Responsável</button>
+                    </div>
+                     <div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">Feedback e Suporte</h3>
+                        <p class="text-sm text-gray-600 mb-4">Tem alguma sugestão ou precisa de ajuda? Envie-nos uma mensagem.</p>
+                        <form>
+                            <textarea rows="4" class="w-full border rounded-md p-2" placeholder="Escreva a sua mensagem aqui..."></textarea>
+                            <button type="submit" class="mt-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Enviar Feedback</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<script>
+    const screens = document.querySelectorAll('.screen');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const appContainer = document.getElementById('app-container');
+    const viewToggle = document.getElementById('view-toggle');
+    const userInfoHeader = document.getElementById('user-info-header');
+
+    function showScreen(screenId) {
+        screens.forEach(screen => {
+            screen.classList.remove('active');
+        });
+        const activeScreen = document.getElementById(screenId);
+        if (activeScreen) {
+            activeScreen.classList.add('active');
+        }
+
+        if (screenId === 'login') {
+            userInfoHeader.style.display = 'none';
+        } else {
+            userInfoHeader.style.display = 'flex';
+        }
+    }
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const screenId = e.target.getAttribute('data-screen');
+            showScreen(screenId);
+            // Hide dropdown after click on mobile
+            if (appContainer.classList.contains('mobile-view')) {
+                 e.target.closest('.dropdown-content').style.display = 'none';
+                 setTimeout(() => e.target.closest('.dropdown-content').style.display = '', 100);
+            }
+        });
+    });
+
+    viewToggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            appContainer.classList.remove('mobile-view');
+            appContainer.classList.add('desktop-view');
+        } else {
+            appContainer.classList.remove('desktop-view');
+            appContainer.classList.add('mobile-view');
+        }
+    });
+    
+    // Accordion Logic
+    document.querySelectorAll('.accordion-toggle').forEach(button => {
+        button.addEventListener('click', () => {
+            const content = button.nextElementSibling;
+            const icon = button.querySelector('svg');
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+                icon.style.transform = 'rotate(180deg)';
+            }
+        });
+    });
+
+    // Prevent forms from submitting
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', e => e.preventDefault());
+    });
+
+    function generatePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const pageHeight = doc.internal.pageSize.height;
+        const pageWidth = doc.internal.pageSize.width;
+        let yPos = 20;
+
+        // Colors
+        const primaryColor = '#DB2777'; // pink-600
+        const textColor = '#374151'; // gray-700
+        const lightTextColor = '#6B7280'; // gray-500
+
+        // Header
+        doc.setFontSize(22);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(primaryColor);
+        doc.text("EndoCare", 14, yPos);
+        doc.setFontSize(14);
+        doc.setTextColor(textColor);
+        doc.text("Relatório de Saúde", 105, yPos, { align: 'center' });
+        yPos += 8;
+        doc.setDrawColor(primaryColor);
+        doc.line(14, yPos, pageWidth - 14, yPos);
+        yPos += 10;
+
+        // Patient Info
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text("Paciente:", 14, yPos);
+        doc.setFont("helvetica", "normal");
+        doc.text("Ana Silva", 35, yPos);
+        doc.setFont("helvetica", "bold");
+        doc.text("Período:", 105, yPos, { align: 'center' });
+        doc.setFont("helvetica", "normal");
+        doc.text("09/06/2025 - 08/07/2025", 140, yPos);
+        yPos += 10;
+
+        // Summary Cards
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("Resumo do Período", 14, yPos);
+        yPos += 5;
+        doc.setFillColor('#FCE7F3'); // pink-100
+        doc.rect(14, yPos, 60, 20, 'F');
+        doc.setTextColor(primaryColor);
+        doc.setFontSize(16);
+        doc.text("6/10", 44, yPos + 9, { align: 'center' });
+        doc.setFontSize(9);
+        doc.setTextColor(lightTextColor);
+        doc.text("Dor Média", 44, yPos + 15, { align: 'center' });
+
+        doc.setFillColor('#E0E7FF'); // indigo-100
+        doc.rect(76, yPos, 60, 20, 'F');
+        doc.setTextColor('#4338CA'); // indigo-700
+        doc.setFontSize(16);
+        doc.text("Inchaço", 106, yPos + 9, { align: 'center' });
+        doc.setFontSize(9);
+        doc.setTextColor(lightTextColor);
+        doc.text("Sintoma Frequente", 106, yPos + 15, { align: 'center' });
+
+        doc.setFillColor('#D1FAE5'); // teal-100
+        doc.rect(138, yPos, 60, 20, 'F');
+        doc.setTextColor('#047857'); // teal-700
+        doc.setFontSize(16);
+        doc.text("83%", 168, yPos + 9, { align: 'center' });
+        doc.setFontSize(9);
+        doc.setTextColor(lightTextColor);
+        doc.text("Adesão ao Registo", 168, yPos + 15, { align: 'center' });
+        yPos += 30;
+        
+        // Chart
+        const reportCanvas = document.getElementById('reportChart');
+        const imgData = reportCanvas.toDataURL('image/png');
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(textColor);
+        doc.text("Evolução da Dor (Últimos 30 dias)", 14, yPos);
+        yPos += 5;
+        doc.addImage(imgData, 'PNG', 14, yPos, 180, 80);
+        yPos += 90;
+
+        // Daily Logs Table
+        const head = [['Data', 'Dor', 'Sintomas', 'Medicação', 'Notas']];
+        const body = [
+            ['07/07/25', '7/10', 'Cólica, Fadiga', 'Buscopan', ''],
+            ['06/07/25', '8/10', 'Cólica, Inchaço, Dor Lombar', '', 'Dia muito difícil, pouca energia.'],
+            ['05/07/25', '5/10', 'Inchaço', 'Pílula', ''],
+            ['04/07/25', '4/10', 'Leve dor lombar', 'Pílula', 'Consegui fazer uma caminhada leve.'],
+            ['03/07/25', '6/10', 'Cólica', 'Ibuprofeno, Pílula', ''],
+        ];
+
+        doc.autoTable({
+            startY: yPos,
+            head: head,
+            body: body,
+            theme: 'grid',
+            headStyles: {
+                fillColor: primaryColor,
+                textColor: '#FFFFFF',
+                fontStyle: 'bold'
+            },
+            styles: {
+                font: 'helvetica',
+                fontSize: 9,
+                cellPadding: 2,
+            },
+            columnStyles: {
+                0: { cellWidth: 18 },
+                1: { cellWidth: 15 },
+                2: { cellWidth: 45 },
+                3: { cellWidth: 40 },
+                4: { cellWidth: 'auto' },
+            }
+        });
+
+        // Footer
+        const pageCount = doc.internal.getNumberOfPages();
+        for(let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text(`Relatório gerado em ${new Date().toLocaleDateString('pt-BR')} pela aplicação EndoCare.`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+            doc.text(`Página ${i} de ${pageCount}`, pageWidth - 20, pageHeight - 10);
+        }
+
+        // Open PDF in a new window
+        doc.output('dataurlnewwindow');
+    }
+
+    // Mock Chart Data
+    const chartConfig = {
+        type: 'line',
+        data: {
+            labels: Array.from({length: 30}, (_, i) => i + 1),
+            datasets: [{
+                label: 'Nível de Dor',
+                data: Array.from({length: 30}, () => Math.floor(Math.random() * 8) + 2),
+                borderColor: 'rgb(219, 39, 119)',
+                backgroundColor: 'rgba(219, 39, 119, 0.1)',
+                fill: true,
+                tension: 0.4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 10
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    };
+
+    const painChartCtx = document.getElementById('painChart');
+    if(painChartCtx) new Chart(painChartCtx, chartConfig);
+
+    const reportChartCtx = document.getElementById('reportChart');
+    if(reportChartCtx) new Chart(reportChartCtx, chartConfig);
+
+
+    // Set initial screen
+    showScreen('login');
+    viewToggle.checked = true; // Start in desktop view
+</script>
+
+</body>
+</html>
