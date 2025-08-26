@@ -319,7 +319,7 @@
                         <p><strong>05/07/2025:</strong> Dor 5/10. Sintomas: Inchaço. Meds: Pílula.</p>
                     </div>
                     <div class="text-center mt-6">
-                         <button class="w-full sm:w-auto bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="generatePDF()">Confirmar e Gerar PDF</button>
+                         <button id="generate-pdf-btn" class="w-full sm:w-auto bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:bg-pink-400" onclick="startPDFGeneration()">Confirmar e Gerar PDF</button>
                     </div>
                 </div>
             </div>
@@ -383,6 +383,39 @@
     const dashboardChartContainer = document.getElementById('dashboard-chart-container');
     const showReportPreviewBtn = document.getElementById('show-report-preview-btn');
     const reportPreviewContainer = document.getElementById('report-preview-container');
+    let reportChartInstance = null; // To hold the report chart instance
+
+    // Chart configuration
+    const chartConfig = {
+        type: 'line',
+        data: {
+            labels: Array.from({length: 30}, (_, i) => i + 1),
+            datasets: [{
+                label: 'Nível de Dor',
+                data: Array.from({length: 30}, () => Math.floor(Math.random() * 8) + 2),
+                borderColor: 'rgb(219, 39, 119)',
+                backgroundColor: 'rgba(219, 39, 119, 0.1)',
+                fill: true,
+                tension: 0.4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false, // Disable animation for faster PDF generation
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 10
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    };
 
     function showScreen(screenId) {
         screens.forEach(screen => {
@@ -434,6 +467,14 @@
 
     showReportPreviewBtn.addEventListener('click', () => {
         reportPreviewContainer.classList.remove('hidden-section');
+        const reportChartCtx = document.getElementById('reportChart').getContext('2d');
+        
+        // Destroy the old chart instance if it exists
+        if (reportChartInstance) {
+            reportChartInstance.destroy();
+        }
+        // Create a new chart instance for the preview
+        reportChartInstance = new Chart(reportChartCtx, chartConfig);
     });
     
     document.querySelectorAll('.accordion-toggle').forEach(button => {
@@ -453,6 +494,21 @@
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', e => e.preventDefault());
     });
+
+    function startPDFGeneration() {
+        const pdfButton = document.getElementById('generate-pdf-btn');
+        const originalText = pdfButton.innerHTML;
+        pdfButton.disabled = true;
+        pdfButton.innerHTML = 'Gerando...';
+
+        // Use a timeout to ensure the canvas is painted before we try to read it
+        setTimeout(() => {
+            generatePDF();
+            // Restore button after PDF generation is triggered
+            pdfButton.disabled = false;
+            pdfButton.innerHTML = originalText;
+        }, 100); // 100ms delay is usually enough for the browser to render
+    }
 
     function generatePDF() {
         const { jsPDF } = window.jspdf;
@@ -517,9 +573,10 @@
         doc.text("83%", 168, yPos + 9, { align: 'center' });
         doc.setFontSize(9);
         doc.setTextColor(lightTextColor);
-        doc.text("Adesão ao Registo", 168, yPos + 15, { align: 'center' });
+        doc.text("Logs Registrados", 168, yPos + 15, { align: 'center' });
         yPos += 30;
         
+        // Use the existing chart instance for the PDF
         const reportCanvas = document.getElementById('reportChart');
         const imgData = reportCanvas.toDataURL('image/png');
         doc.setFontSize(12);
@@ -563,55 +620,15 @@
             }
         });
 
-        const pageCount = doc.internal.getNumberOfPages();
-        for(let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.setFontSize(8);
-            doc.setTextColor(150);
-            doc.text(`Relatório gerado em ${new Date().toLocaleDateString('pt-BR')} pela aplicação EndoCare.`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-            doc.text(`Página ${i} de ${pageCount}`, pageWidth - 20, pageHeight - 10);
-        }
-
-        doc.output('dataurlnewwindow');
+        // Finaliza e descarrega o ficheiro
+        doc.save("relatorio_endocare.pdf");
     }
 
-    const chartConfig = {
-        type: 'line',
-        data: {
-            labels: Array.from({length: 30}, (_, i) => i + 1),
-            datasets: [{
-                label: 'Nível de Dor',
-                data: Array.from({length: 30}, () => Math.floor(Math.random() * 8) + 2),
-                borderColor: 'rgb(219, 39, 119)',
-                backgroundColor: 'rgba(219, 39, 119, 0.1)',
-                fill: true,
-                tension: 0.4,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 10
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
-        }
-    };
-
+    // Initialize dashboard chart on load
     const painChartCtx = document.getElementById('painChart');
     if(painChartCtx) new Chart(painChartCtx, chartConfig);
 
-    const reportChartCtx = document.getElementById('reportChart');
-    if(reportChartCtx) new Chart(reportChartCtx, chartConfig);
-
-
+    // Initial screen setup
     showScreen('login');
     viewToggle.checked = true;
 </script>
