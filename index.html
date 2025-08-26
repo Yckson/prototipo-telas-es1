@@ -62,6 +62,9 @@
             overflow: hidden;
             transition: max-height 0.3s ease-in-out;
         }
+        .hidden-section {
+            display: none;
+        }
     </style>
 </head>
 <body class="text-gray-800 p-4">
@@ -172,7 +175,11 @@
                     </div>
                 </div>
 
-                <div>
+                <div class="text-center my-4">
+                    <button id="show-dashboard-chart-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Ver Gráfico de Evolução</button>
+                </div>
+
+                <div id="dashboard-chart-container" class="hidden-section">
                     <h3 class="text-xl font-semibold mb-2">Evolução da Dor (Últimos 30 dias)</h3>
                     <div class="h-64"><canvas id="painChart"></canvas></div>
                 </div>
@@ -295,10 +302,10 @@
                             <option>Últimos 90 dias</option>
                         </select>
                     </div>
-                    <button class="w-full sm:w-auto bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="generatePDF()">Gerar PDF</button>
+                    <button id="show-report-preview-btn" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Pré-visualizar Relatório</button>
                 </div>
 
-                <div class="mt-8 border rounded-lg p-6">
+                <div id="report-preview-container" class="hidden-section mt-8 border rounded-lg p-6">
                     <h3 class="text-lg font-semibold text-center">Pré-visualização do Relatório</h3>
                     <div class="text-center my-4">
                         <h4 class="font-bold text-xl">Relatório de Saúde - EndoCare</h4>
@@ -310,6 +317,9 @@
                         <p><strong>07/07/2025:</strong> Dor 7/10. Sintomas: Cólica, Fadiga. Meds: Buscopan.</p>
                         <p><strong>06/07/2025:</strong> Dor 8/10. Sintomas: Cólica, Inchaço, Dor Lombar. Notas: Dia muito difícil.</p>
                         <p><strong>05/07/2025:</strong> Dor 5/10. Sintomas: Inchaço. Meds: Pílula.</p>
+                    </div>
+                    <div class="text-center mt-6">
+                         <button class="w-full sm:w-auto bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="generatePDF()">Confirmar e Gerar PDF</button>
                     </div>
                 </div>
             </div>
@@ -369,6 +379,10 @@
     const appContainer = document.getElementById('app-container');
     const viewToggle = document.getElementById('view-toggle');
     const userInfoHeader = document.getElementById('user-info-header');
+    const showDashboardChartBtn = document.getElementById('show-dashboard-chart-btn');
+    const dashboardChartContainer = document.getElementById('dashboard-chart-container');
+    const showReportPreviewBtn = document.getElementById('show-report-preview-btn');
+    const reportPreviewContainer = document.getElementById('report-preview-container');
 
     function showScreen(screenId) {
         screens.forEach(screen => {
@@ -384,6 +398,11 @@
         } else {
             userInfoHeader.style.display = 'flex';
         }
+        
+        // Reset hidden sections when changing screens
+        dashboardChartContainer.classList.add('hidden-section');
+        showDashboardChartBtn.classList.remove('hidden-section');
+        reportPreviewContainer.classList.add('hidden-section');
     }
 
     navLinks.forEach(link => {
@@ -391,7 +410,6 @@
             e.preventDefault();
             const screenId = e.target.getAttribute('data-screen');
             showScreen(screenId);
-            // Hide dropdown after click on mobile
             if (appContainer.classList.contains('mobile-view')) {
                  e.target.closest('.dropdown-content').style.display = 'none';
                  setTimeout(() => e.target.closest('.dropdown-content').style.display = '', 100);
@@ -409,7 +427,15 @@
         }
     });
     
-    // Accordion Logic
+    showDashboardChartBtn.addEventListener('click', () => {
+        dashboardChartContainer.classList.remove('hidden-section');
+        showDashboardChartBtn.classList.add('hidden-section');
+    });
+
+    showReportPreviewBtn.addEventListener('click', () => {
+        reportPreviewContainer.classList.remove('hidden-section');
+    });
+    
     document.querySelectorAll('.accordion-toggle').forEach(button => {
         button.addEventListener('click', () => {
             const content = button.nextElementSibling;
@@ -424,7 +450,6 @@
         });
     });
 
-    // Prevent forms from submitting
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', e => e.preventDefault());
     });
@@ -436,12 +461,10 @@
         const pageWidth = doc.internal.pageSize.width;
         let yPos = 20;
 
-        // Colors
-        const primaryColor = '#DB2777'; // pink-600
-        const textColor = '#374151'; // gray-700
-        const lightTextColor = '#6B7280'; // gray-500
+        const primaryColor = '#DB2777';
+        const textColor = '#374151';
+        const lightTextColor = '#6B7280';
 
-        // Header
         doc.setFontSize(22);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(primaryColor);
@@ -454,7 +477,6 @@
         doc.line(14, yPos, pageWidth - 14, yPos);
         yPos += 10;
 
-        // Patient Info
         doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
         doc.text("Paciente:", 14, yPos);
@@ -466,12 +488,11 @@
         doc.text("09/06/2025 - 08/07/2025", 140, yPos);
         yPos += 10;
 
-        // Summary Cards
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
         doc.text("Resumo do Período", 14, yPos);
         yPos += 5;
-        doc.setFillColor('#FCE7F3'); // pink-100
+        doc.setFillColor('#FCE7F3');
         doc.rect(14, yPos, 60, 20, 'F');
         doc.setTextColor(primaryColor);
         doc.setFontSize(16);
@@ -480,18 +501,18 @@
         doc.setTextColor(lightTextColor);
         doc.text("Dor Média", 44, yPos + 15, { align: 'center' });
 
-        doc.setFillColor('#E0E7FF'); // indigo-100
+        doc.setFillColor('#E0E7FF');
         doc.rect(76, yPos, 60, 20, 'F');
-        doc.setTextColor('#4338CA'); // indigo-700
+        doc.setTextColor('#4338CA');
         doc.setFontSize(16);
         doc.text("Inchaço", 106, yPos + 9, { align: 'center' });
         doc.setFontSize(9);
         doc.setTextColor(lightTextColor);
         doc.text("Sintoma Frequente", 106, yPos + 15, { align: 'center' });
 
-        doc.setFillColor('#D1FAE5'); // teal-100
+        doc.setFillColor('#D1FAE5');
         doc.rect(138, yPos, 60, 20, 'F');
-        doc.setTextColor('#047857'); // teal-700
+        doc.setTextColor('#047857');
         doc.setFontSize(16);
         doc.text("83%", 168, yPos + 9, { align: 'center' });
         doc.setFontSize(9);
@@ -499,7 +520,6 @@
         doc.text("Adesão ao Registo", 168, yPos + 15, { align: 'center' });
         yPos += 30;
         
-        // Chart
         const reportCanvas = document.getElementById('reportChart');
         const imgData = reportCanvas.toDataURL('image/png');
         doc.setFontSize(12);
@@ -510,7 +530,6 @@
         doc.addImage(imgData, 'PNG', 14, yPos, 180, 80);
         yPos += 90;
 
-        // Daily Logs Table
         const head = [['Data', 'Dor', 'Sintomas', 'Medicação', 'Notas']];
         const body = [
             ['07/07/25', '7/10', 'Cólica, Fadiga', 'Buscopan', ''],
@@ -544,7 +563,6 @@
             }
         });
 
-        // Footer
         const pageCount = doc.internal.getNumberOfPages();
         for(let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
@@ -554,11 +572,9 @@
             doc.text(`Página ${i} de ${pageCount}`, pageWidth - 20, pageHeight - 10);
         }
 
-        // Open PDF in a new window
         doc.output('dataurlnewwindow');
     }
 
-    // Mock Chart Data
     const chartConfig = {
         type: 'line',
         data: {
@@ -596,9 +612,8 @@
     if(reportChartCtx) new Chart(reportChartCtx, chartConfig);
 
 
-    // Set initial screen
     showScreen('login');
-    viewToggle.checked = true; // Start in desktop view
+    viewToggle.checked = true;
 </script>
 
 </body>
